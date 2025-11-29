@@ -22,78 +22,13 @@ class Asset extends Model
         'condition',
         'status',
         'image',
-        'qr_code',
+        'qr_code', // QR code adalah kolom biasa, bukan relasi!
     ];
 
     protected $casts = [
         'purchase_date' => 'date',
         'price' => 'decimal:2',
     ];
-
-    // ✅ PERBAIKAN: Tambahkan relasi qrCodes (plural)
-    // Tambahkan relasi ini:
-    public function qrCodes()
-    {
-        return $this->hasMany(QrCode::class, 'asset_id');
-    }
-
-    // public function qrCode()
-    // {
-    //     return $this->hasOne(QrCode::class, 'asset_id');
-    // }
-
-    // // ✅ ALTERNATIF: Jika ingin singular, tambahkan juga qrCode
-    // public function qrCode()
-    // {
-    //     return $this->hasOne(QrCode::class, 'asset_id');
-    // }
-
-    // public function assetType()
-    // {
-    //     return $this->belongsTo(AssetType::class, 'asset_type_id');
-    // }
-
-    // public function borrowings()
-    // {
-    //     return $this->hasMany(Borrowing::class, 'asset_id');
-    // }
-
-    // public function maintenances()
-    // {
-    //     return $this->hasMany(Maintenance::class, 'asset_id');
-    // }
-
-    //
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::creating(function ($asset) {
-            if (empty($asset->asset_id)) {
-                $asset->asset_id = self::generateAssetId($asset->asset_type_id);
-            }
-        });
-    }
-
-    public static function generateAssetId($assetTypeId)
-    {
-        $type = AssetType::find($assetTypeId);
-        $year = date('Y');
-        $month = date('m');
-
-        $lastAsset = self::where('asset_id', 'LIKE', "$year/$month/{$type->code}-%")
-            ->orderBy('asset_id', 'desc')
-            ->first();
-
-        if ($lastAsset) {
-            $lastNumber = (int) substr($lastAsset->asset_id, -4);
-            $newNumber = str_pad($lastNumber + 1, 4, '0', STR_PAD_LEFT);
-        } else {
-            $newNumber = '0001';
-        }
-
-        return "$year/$month/{$type->code}-$newNumber";
-    }
 
     public function assetType()
     {
@@ -110,8 +45,11 @@ class Asset extends Model
         return $this->hasMany(Maintenance::class);
     }
 
-    public function qrCode()
+    /**
+     * Generate QR Code URL untuk asset ini
+     */
+    public function getQrCodeUrlAttribute()
     {
-        return $this->hasOne(QrCode::class);
+        return route('asset.detail', ['qrcode' => $this->qr_code]);
     }
 }

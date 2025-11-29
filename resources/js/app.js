@@ -1,5 +1,4 @@
 import "./bootstrap";
-import "./bootstrap";
 
 // Global utility functions
 window.showLoading = function () {

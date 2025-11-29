@@ -106,7 +106,8 @@
                             <td><span class="price-display">Rp {{ number_format($asset->price, 0, ',', '.') }}</span></td>
                             <td>
                                 <div class="action-buttons">
-                                    <a href="{{ route('assets-inv.show', $asset) }}" class="btn btn-secondary">Detail</a>
+                                    <button onclick="showAssetDetail({{ $asset->id }})"
+                                        class="btn btn-secondary">Detail</button>
                                     <a href="{{ route('assets-inv.edit', $asset) }}" class="btn btn-primary">Edit</a>
                                     <form action="{{ route('assets-inv.destroy', $asset) }}" method="POST"
                                         style="display: inline;"
@@ -162,6 +163,19 @@
             <span class="icon">⬆️</span>
         </div>
     </div>
+
+    <div id="assetDetailModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Detail Aset</h3>
+                <button class="close-modal" onclick="closeAssetModal()">×</button>
+            </div>
+            <div class="modal-body" id="assetDetailContent">
+                <p style="text-align: center; padding: 2rem;">Loading...</p>
+            </div>
+        </div>
+    </div>
+
 @endsection
 
 @push('styles')
@@ -212,54 +226,126 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function () {
-            const easyTouchBtn = document.getElementById('easyTouchBtn');
-            const easyTouchMenu = document.getElementById('easyTouchMenu');
+            console.log('DOM loaded - initializing asset management');
 
-            // Show on mobile/tablet
-            if (window.innerWidth <= 1024) {
-                easyTouchBtn.style.display = 'flex';
-            }
-
-            easyTouchBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                easyTouchMenu.classList.toggle('active');
-            });
-
-            // Search functionality
             const searchInput = document.getElementById('assetSearch');
             let searchTimeout;
 
-            searchInput.addEventListener('input', function () {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(() => {
-                    applyFilters();
-                }, 500);
-            });
+            // Search functionality
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        applyFilters();
+                    }, 500);
+                });
+            }
 
             // Filter functionality
-            document.getElementById('filterStatus').addEventListener('change', applyFilters);
-            document.getElementById('filterType').addEventListener('change', applyFilters);
+            const filterStatus = document.getElementById('filterStatus');
+            const filterType = document.getElementById('filterType');
+
+            if (filterStatus) filterStatus.addEventListener('change', applyFilters);
+            if (filterType) filterType.addEventListener('change', applyFilters);
 
             // Easy Touch Button
             const easyTouchBtn = document.getElementById('easyTouchBtn');
             const easyTouchMenu = document.getElementById('easyTouchMenu');
 
             if (easyTouchBtn) {
-                easyTouchBtn.addEventListener('click', function () {
+                easyTouchBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
                     easyTouchMenu.classList.toggle('active');
                 });
             }
 
             // Close menu when clicking outside
             document.addEventListener('click', function () {
-                easyTouchMenu.classList.remove('active');
+                const easyTouchMenu = document.getElementById('easyTouchMenu');
+                if (easyTouchMenu) {
+                    easyTouchMenu.classList.remove('active');
+                }
             });
+
+            // Show easy touch button on mobile/tablet
+            if (window.innerWidth <= 1024 && easyTouchBtn) {
+                easyTouchBtn.style.display = 'flex';
+            }
         });
 
+        function closeAssetModal() {
+            const modal = document.getElementById('assetDetailModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function showAssetDetail(assetId) {
+            console.log('showAssetDetail called with ID:', assetId);
+
+            const modal = document.getElementById('assetDetailModal');
+            const content = document.getElementById('assetDetailContent');
+
+            if (!modal || !content) {
+                console.error('Modal elements not found');
+                alert('Error: Modal tidak ditemukan');
+                return;
+            }
+
+            // Tampilkan loading dan modal
+            content.innerHTML = '<div style="text-align: center; padding: 3rem;"><div class="loading-spinner"></div><p>Loading detail aset...</p></div>';
+            modal.style.display = 'flex';
+
+            // URL untuk fetch data modal - PASTIKAN ROUTE INI SESUAI
+            const url = `{{ url('assets-inv/modal-detail') }}/${assetId}`;
+            console.log('Fetching from URL:', url);
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok: ' + response.status);
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    console.log('Successfully loaded modal content');
+                    content.innerHTML = html;
+
+                    // Re-execute scripts in the loaded content
+                    const scripts = content.querySelectorAll('script');
+                    scripts.forEach(script => {
+                        const newScript = document.createElement('script');
+                        if (script.src) {
+                            newScript.src = script.src;
+                        } else {
+                            newScript.text = script.text;
+                        }
+                        document.body.appendChild(newScript).parentNode.removeChild(newScript);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading asset detail:', error);
+                    content.innerHTML = `
+                                <div style="text-align: center; padding: 2rem;">
+                                    <p style="color: var(--danger-color); margin-bottom: 1rem;">
+                                        Gagal memuat detail aset. Silakan coba lagi.
+                                    </p>
+                                    <button class="btn btn-secondary" onclick="closeAssetModal()">Tutup</button>
+                                </div>
+                            `;
+                });
+        }
+
         function applyFilters() {
-            const search = document.getElementById('assetSearch').value;
-            const status = document.getElementById('filterStatus').value;
-            const type = document.getElementById('filterType').value;
+            const search = document.getElementById('assetSearch')?.value || '';
+            const status = document.getElementById('filterStatus')?.value || '';
+            const type = document.getElementById('filterType')?.value || '';
 
             const params = new URLSearchParams();
             if (search) params.append('search', search);
@@ -269,6 +355,7 @@
             window.location.href = '{{ route('assets-inv.index') }}?' + params.toString();
         }
 
+        // ... (fungsi lainnya tetap sama)
         function toggleBulkMode() {
             bulkModeActive = !bulkModeActive;
             const table = document.getElementById('assetsTable');
@@ -285,18 +372,16 @@
                 updateSelectedCount();
             }
 
-            document.getElementById('easyTouchMenu').classList.remove('active');
-
-            console.log('Toggle bulk mode');
-        }
-
-        function cancelBulkMode() {
-            toggleBulkMode();
+            const easyTouchMenu = document.getElementById('easyTouchMenu');
+            if (easyTouchMenu) {
+                easyTouchMenu.classList.remove('active');
+            }
         }
 
         function toggleSelectAll() {
             const selectAll = document.getElementById('selectAll');
-            document.querySelectorAll('.asset-checkbox').forEach(cb => {
+            const checkboxes = document.querySelectorAll('.asset-checkbox');
+            checkboxes.forEach(cb => {
                 cb.checked = selectAll.checked;
             });
             updateSelectedCount();
@@ -308,61 +393,18 @@
             document.getElementById('selectedCount').textContent = selectedAssets.length;
         }
 
-        function bulkDelete() {
-            if (selectedAssets.length === 0) {
-                showToast('Pilih minimal satu aset', 'error');
-                return;
+        // Close modal when clicking outside
+        document.addEventListener('click', function (event) {
+            const modal = document.getElementById('assetDetailModal');
+            if (event.target === modal) {
+                closeAssetModal();
             }
+        });
 
-            if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedAssets.length} aset?`)) {
-                return;
-            }
-
-            showLoading();
-
-            fetch('{{ route('assets.bulk-delete') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({ ids: selectedAssets })
-            })
-                .then(response => response.json())
-                .then(data => {
-                    hideLoading();
-                    if (data.success) {
-                        showToast(data.message, 'success');
-                        setTimeout(() => window.location.reload(), 1000);
-                    } else {
-                        showToast('Gagal menghapus aset', 'error');
-                    }
-                })
-                .catch(error => {
-                    hideLoading();
-                    showToast('Terjadi kesalahan', 'error');
-                });
-        }
-
-        function exportAssets() {
-            window.location.href = '{{ route("reports.export.excel") }}?type=assets';
-        }
-
-        function scrollToTop() {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function scrollToBottom() {
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-        }
-
-        // Responsive check
-        window.addEventListener('resize', function () {
-            if (window.innerWidth <= 1024) {
-                easyTouchBtn.style.display = 'flex';
-            } else {
-                easyTouchBtn.style.display = 'none';
-                easyTouchMenu.classList.remove('active');
+        // Close modal with Escape key
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeAssetModal();
             }
         });
     </script>

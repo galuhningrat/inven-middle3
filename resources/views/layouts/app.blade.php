@@ -13,8 +13,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Styles -->
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    {{-- @vite(['resources/css/app.css', 'resources/js/app.js']) --}}
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/horizontal-scroll.js'])
     @stack('styles')
+
 </head>
 
 <body class="@if(session('dark_mode')) dark-mode @endif">
@@ -31,8 +33,8 @@
             <nav class="sidebar-nav">
                 @php
                     $permissions = [
-                        'Admin' => ['dashboard', 'assets-inv', 'borrowing', 'maintenance', 'users', 'requests', 'reports', 'qrCode'],
-                        'Sarpras' => ['dashboard', 'assets-inv', 'borrowing', 'maintenance', 'reports', 'qrCode'],
+                        'Admin' => ['dashboard', 'assets-inv', 'borrowing', 'maintenance', 'users', 'requests', 'reports'],
+                        'Sarpras' => ['dashboard', 'assets-inv', 'borrowing', 'maintenance', 'reports'],
                         'Rektor' => ['dashboard', 'reports'],
                         'Kaprodi' => ['dashboard', 'requests', 'reports'],
                         'Keuangan' => ['dashboard', 'requests', 'reports'],
@@ -127,21 +129,6 @@
                     </a>
                 @endif
 
-                @if(in_array('qrCode', $userPermissions))
-                    <a href="{{ route('qrcodes.index') }}"
-                        class="nav-link {{ request()->routeIs('qrcodes.*') ? 'active' : '' }}" data-page="qrCode">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <rect x="3" y="3" width="7" height="7" rx="1" />
-                            <rect x="14" y="3" width="7" height="7" rx="1" />
-                            <rect x="3" y="14" width="7" height="7" rx="1" />
-                            <rect x="14" y="14" width="3" height="3" />
-                            <rect x="18" y="14" width="3" height="3" />
-                            <rect x="14" y="18" width="3" height="3" />
-                            <rect x="18" y="18" width="3" height="3" />
-                        </svg>
-                        <span>Manajemen QR Code</span>
-                    </a>
-                @endif
             </nav>
         </aside>
 
